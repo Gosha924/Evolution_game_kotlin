@@ -1,0 +1,102 @@
+
+class Diagram
+
+    class Card {
+        <<abstract>>
+        id: int
+        play()
+    }
+
+    class Game {
+    gameId: int
+    listofPlayers: <List>
+    foodPool: int
+    deck: <List>
+    currentPhase
+    currentPlayer
+    discardCart: <List>
+    listMoves: <List>
+    nextPhase()
+    startGame()
+    developmentPhase()
+    climatePhase()
+    feedingPhase()
+    diePhase()
+    calculateFinalScore()
+    getWinner()
+    canPlayCard(player: Player, card: Card, target: Animal?): Boolean
+    recordMove()
+    isValidMove()
+
+    }
+
+    class Player {
+        name: string
+        playerId: int
+        score: int
+        listOfAnimals: <List>
+        hand: <List>
+        addCard()
+        getCardFromDeck()
+        playCard()
+    }
+
+    class Trait {
+        traitType: TraitType
+        id: int
+        attack(predator: Animal, victim: Animal) Boolean
+    
+    }
+    class Animal{
+        id: int
+        size: int
+        foodEaten: int
+        isAlive: bool
+        listTraits: <List>
+        addTrait()
+        feed()
+        die()
+    }
+
+    class TraitType {
+    тут должен быть enum но он не поддкрживается
+        PREDATOR, 
+        AQUATIC
+        FAT,
+
+    }
+    class AnimalCard {
+        createNewAnimal()
+    }
+
+    class TraitCard {
+        createNewTrait()
+    
+    }
+
+    class Move {
+        moveId: int
+        gameId: int
+        playerId: int
+        actionType: ActionType
+        cardId: int
+    }
+
+    class ActionType {
+    тут должен быть enum но он не поддкрживается
+    PLAY_ANIMAL_CARD
+    PLAY_TRAIT_CARD
+    FEED_HERBIVORE
+    ATTACK_PREDATOR
+    PASS
+    }
+
+
+
+
+    Animal  --> Trait
+    Player  -->  Animal
+    Game  -->  Player
+    Card <|-- AnimalCard
+    Card <|-- TraitCard
+    Trait --> TraitType
