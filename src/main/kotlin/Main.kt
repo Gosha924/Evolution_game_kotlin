@@ -10,7 +10,16 @@ fun main() {
     val statistics = Statistics(repository)
     val console = Console(statistics, repository)
     while (true) {
-        console.startNewGame()
+        println("1. Начать новую партию")
+        println("2. Посмотреть статистику")
+        println("3. Выход")
+        print("Выберите действие: ")
+        when (readlnOrNull()) {
+            "1" -> console.startNewGame()
+            "2" -> console.showStatistics()
+            "3" -> console.exit()
+            else -> println("Некорректный ввод")
+        }
     }
 
 }
