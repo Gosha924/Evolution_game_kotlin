@@ -127,7 +127,7 @@ class TramplingTrait(id: Int) : Trait(id, TraitType.TRAMPLING) {
     }
 }
 
-//Отбрасывание хвоста
+// Отбрасывание хвоста
 class TailLossTrait(id: Int) : Trait(id, TraitType.TAIL_LOSS) {
     // Логика отбрасывания хвоста обрабатываться когда администратор укажет, что жертва спаслась ценой свойства.
 }

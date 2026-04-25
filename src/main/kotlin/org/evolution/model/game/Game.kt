@@ -37,8 +37,8 @@ class Game(val gameId: Int) {
 
     fun nextPhase() {
         currentPhase = when (currentPhase) {
-            is DevelopmentPhase -> FeedingPhase() // Упростим цикл: Развитие -> Питание
-            is FeedingPhase -> ExtinctionPhase()  // Питание -> Вымирание
+            is DevelopmentPhase -> FeedingPhase()
+            is FeedingPhase -> ExtinctionPhase()
             is ExtinctionPhase -> {
                 if (deck.isNotEmpty()) {
                     prepareNewRound()
@@ -76,7 +76,7 @@ class Game(val gameId: Int) {
             var totalScore = 0
             for (animal in player.animals.filter { it.isAlive }) {
                 totalScore += 2 // 2 очка за выжившее животное
-                // Теперь очки за свойства берутся из самих свойств (учитывая Parasite = 2 очка)
+                // Очки за свойства берутся из самих свойств
                 totalScore += animal.traits.sumOf { it.calculateScore() }
             }
             player.score = totalScore
@@ -117,7 +117,9 @@ class Game(val gameId: Int) {
                     println("Животное ${target.id} получило свойство ${newTrait.traitType}")
                 }
             }
-
+            /**
+             Тут нужно поделать проверку других ходов
+             */
             else -> { /* обработка других действий */
             }
         }

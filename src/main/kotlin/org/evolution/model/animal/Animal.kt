@@ -7,6 +7,10 @@ class Animal(val id: Int) {
     var foodEaten: Int = 0
     var isAlive: Boolean = true
 
+    /**
+     * нужно добавить реализацию парных свойств
+     */
+
     fun getSize(): Int {
         return 1 + traits.count { it is LargeTrait }
     }

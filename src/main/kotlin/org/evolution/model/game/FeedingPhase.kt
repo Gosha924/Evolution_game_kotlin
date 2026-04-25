@@ -180,7 +180,6 @@ class FeedingPhase : Phase() {
                 if (animal.foodEaten < animal.totalFoodRequired()) {
                     println("Животное ${animal.id} игрока ${player.name} погибло от голода.")
                     animal.die()
-                    // В реальном репозитории здесь может быть удаление из списка
                 } else {
                     animal.resetRounding() // Обнуляем еду для следующего раунда
                 }

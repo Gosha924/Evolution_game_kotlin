@@ -3,7 +3,6 @@ package org.evolution.ui
 import org.evolution.model.game.Game
 import org.evolution.model.player.Player
 import org.evolution.model.card.Card
-import org.evolution.model.card.AnimalCard
 import org.evolution.model.card.TraitCard
 import org.evolution.model.trait.TraitType
 import org.evolution.model.game.DevelopmentPhase

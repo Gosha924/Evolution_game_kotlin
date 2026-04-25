@@ -24,6 +24,7 @@ class DevelopmentPhase : Phase() {
                 val input = readlnOrNull()
 
                 when (input) {
+                    // тут пока заглушка
                     "1" -> {
                         val card = player.hand.first() // В реальной игре тут должен быть выбор индекса
                         game.playCard(player, card, null, ActionType.PLAY_ANIMAL_CARD)
