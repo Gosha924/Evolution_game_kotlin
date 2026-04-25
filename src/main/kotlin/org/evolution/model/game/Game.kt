@@ -12,6 +12,7 @@ class Game(val gameId: Int) {
     var foodPool: Int = 0
     val deck = mutableListOf<Card>()
     val discardPile = mutableListOf<Card>()
+    var isGameOver = false
 
     // Инициализируем стартовой фазой
     var currentPhase: Phase = DevelopmentPhase()
@@ -36,36 +37,53 @@ class Game(val gameId: Int) {
     }
 
     fun nextPhase() {
-        currentPhase = when (currentPhase) {
-            is DevelopmentPhase -> FeedingPhase()
-            is FeedingPhase -> ExtinctionPhase()
+        val oldPhase = currentPhase
+
+        currentPhase = when (oldPhase) {
+            is DevelopmentPhase -> {
+                ClimatePhase()
+            }
+            is ClimatePhase -> {
+                FeedingPhase()
+            }
+            is FeedingPhase -> {
+                ExtinctionPhase()
+            }
             is ExtinctionPhase -> {
-                if (deck.isNotEmpty()) {
+                // После Вымирания проверяем, продолжаем ли игру
+                if (deck.isNotEmpty() || players.any { it.animals.isNotEmpty() || it.hand.isNotEmpty() }) {
                     prepareNewRound()
                     DevelopmentPhase()
                 } else {
                     endGame()
-                    return
+                    oldPhase
                 }
             }
-
             else -> DevelopmentPhase()
         }
-        println("Переход к фазе: ${currentPhase::class.simpleName}")
-        currentPhase.execute(this)
+
+        println("\n[Система] Смена фаз: ${oldPhase::class.simpleName} -> ${currentPhase::class.simpleName}")
     }
 
     private fun prepareNewRound() {
-        // Раздача карт в начале нового раунда
+        println("\n=== ПОДГОТОВКА НОВОГО РАУНДА: Раздача карт ===")
         for (player in players) {
-            val cardsToDraw = player.animals.count { it.isAlive } + 1
+            val aliveCount = player.animals.size
+            val cardsToDraw = if (aliveCount == 0) 2 else aliveCount + 1
+
+            var actualDrawn = 0
             repeat(cardsToDraw) {
-                if (deck.isNotEmpty()) player.addCard(deck.removeFirst())
+                if (deck.isNotEmpty()) {
+                    player.addCard(deck.removeFirst())
+                    actualDrawn++
+                }
             }
+            println("${player.name} получил $actualDrawn новых карт (Живых животных: $aliveCount)")
         }
     }
 
     private fun endGame() {
+        isGameOver = true
         calculateFinalScore()
         val winner = getWinner()
         println("Игра окончена! Победитель: ${winner?.name ?: "Ничья"} со счетом ${winner?.score}")

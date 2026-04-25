@@ -1,11 +1,16 @@
-package org.example
+package org.evolution
+
+import org.evolution.ui.Console
+import org.evolution.statistics.Statistics
+import org.evolution.repository.InMemoryGameRepository
+
 
 fun main() {
-    val name = "Kotlin"
-
-    println("Hello, " + name + "!")
-    println("test")
-    for (i in 1..5) {
-        println("i = $i")
+    val repository = InMemoryGameRepository()
+    val statistics = Statistics(repository)
+    val console = Console(statistics, repository)
+    while (true) {
+        console.startNewGame()
     }
+
 }

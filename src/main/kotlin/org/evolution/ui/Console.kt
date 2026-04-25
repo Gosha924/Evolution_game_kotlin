@@ -5,12 +5,10 @@ import org.evolution.model.player.Player
 import org.evolution.model.card.Card
 import org.evolution.model.card.TraitCard
 import org.evolution.model.trait.TraitType
-import org.evolution.model.game.DevelopmentPhase
 import org.evolution.statistics.Statistics
 import org.evolution.repository.GameRepository
 import kotlin.system.exitProcess
 import org.evolution.model.game.ExtinctionPhase
-import org.evolution.model.game.Phase
 
 
 // Консольный интерфейс игры Эволюция
@@ -127,29 +125,24 @@ class Console(
     После каждого хода передаёт право первого хода следующему игроку.
      */
     private fun runGameLoop(game: Game) {
-        var currentPhase: Phase = DevelopmentPhase()
-        var firstPlayerIndex = game.currentPlayerIndex
-
         while (true) {
-            // Выполняем текущую фазу
+            //  Берем актуальную фазу
+            val currentPhase = game.currentPhase
+            // Выполняем логику текущей фазы
             currentPhase.execute(game)
-
-            val wasExtinctionPhase = currentPhase is ExtinctionPhase
-
-            // Переключаем фазу внутри игры
-            game.nextPhase()
-
-            // Если игра завершена – выходим
-            if (game.deck.isEmpty() && game.players.all { it.hand.isEmpty() }) {
+            if (game.deck.isEmpty() && game.players.all { it.hand.isEmpty() && it.animals.isEmpty() }) {
                 game.calculateFinalScore()
                 break
             }
-
+            val wasExtinctionPhase = currentPhase is ExtinctionPhase
+            game.nextPhase()
             if (wasExtinctionPhase) {
-                firstPlayerIndex = (firstPlayerIndex + 1) % game.players.size
-                game.currentPlayerIndex = firstPlayerIndex
+                game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.size
+                println("\nНОВЫЙ РАУНД. Первый ход: ${game.players[game.currentPlayerIndex].name} ---")
             }
-            currentPhase = game.currentPhase
+            if (game.deck.isEmpty() && game.players.all { it.hand.isEmpty() }) {
+                break
+            }
         }
     }
 }

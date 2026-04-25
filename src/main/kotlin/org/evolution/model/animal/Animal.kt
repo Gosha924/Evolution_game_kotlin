@@ -1,15 +1,15 @@
 package org.evolution.model.animal
-
 import org.evolution.model.trait.*
 
 class Animal(val id: Int) {
     val traits = mutableListOf<Trait>()
     var foodEaten: Int = 0
     var isAlive: Boolean = true
+    val pairedAnimals = mutableMapOf<TraitType, Animal>()
 
-    /**
-     * нужно добавить реализацию парных свойств
-     */
+    fun addPair(type: TraitType, partner: Animal) {
+        pairedAnimals[type] = partner
+    }
 
     fun getSize(): Int {
         return 1 + traits.count { it is LargeTrait }
@@ -23,7 +23,10 @@ class Animal(val id: Int) {
         traits.add(trait)
     }
 
-    fun isFull(): Boolean = foodEaten >= totalFoodRequired()
+    fun isFull(): Boolean {
+        val required = totalFoodRequired()
+        return foodEaten >= required
+    }
 
     fun needFood(): Int = (totalFoodRequired() - foodEaten).coerceAtLeast(0)
 

@@ -3,7 +3,7 @@ package org.evolution.repository
 import org.evolution.model.game.Game
 import org.evolution.model.game.Move
 
-class Database : GameRepository {
+class InMemoryGameRepository : GameRepository {
     private val games = mutableListOf<Game>()
     private val moves = mutableListOf<Move>()
 
