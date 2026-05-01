@@ -8,17 +8,11 @@ import org.evolution.model.trait.TraitType
 import org.evolution.statistics.Statistics
 import org.evolution.repository.GameRepository
 import kotlin.system.exitProcess
-import org.evolution.model.game.ExtinctionPhase
-
-
-// Консольный интерфейс игры Эволюция
 
 class Console(
     private val statistics: Statistics,
     private val repository: GameRepository
 ) {
-    private var nextGameId = 1
-
 
     fun showStatistics() {
         val leaderboard = statistics.getLeaderboard()
@@ -41,11 +35,16 @@ class Console(
         println("\n=== НОВАЯ ИГРА ===")
         val playerCount = readPlayerCount()
         val players = createPlayers(playerCount)
-        val game = createGame(players)
+        val game = Game(repository.getNextGameId())
+
+        game.initGame(players, createDeck())
+
         println("Игра создана. Начинаем партию...")
-        runGameLoop(game)
+        game.start()
+
         val winner = game.getWinner()
         println("Игра завершена. Победитель: ${winner?.name ?: "Ничья"}")
+
         repository.saveGame(game)
         println("Партия сохранена в базу данных\n")
     }
@@ -67,7 +66,6 @@ class Console(
         }
     }
 
-
     private fun createPlayers(count: Int): List<Player> {
         val players = mutableListOf<Player>()
         for (i in 1..count) {
@@ -78,71 +76,24 @@ class Console(
         return players
     }
 
-    private fun createGame(players: List<Player>): Game {
-        val game = Game(nextGameId++)
-        game.players.addAll(players)
-        game.deck.addAll(createDeck())
-        game.deck.shuffle()
-        game.initGame()
-        return game
-    }
-
-
-    // Создаёт  колоду
 
     private fun createDeck(): List<Card> {
         val deck = mutableListOf<Card>()
         var currentId = 1
-
-        // Список всех 19 типов свойств
-        val traitTypes = listOf(
-            TraitType.PREDATOR, TraitType.FAT, TraitType.AQUATIC,
-            TraitType.BURROWING, TraitType.CAMOUFLAGE, TraitType.SHARP_VISION,
-            TraitType.POISONOUS, TraitType.RUNNING, TraitType.SYMBIOSIS,
-            TraitType.PIRACY, TraitType.COOPERATION, TraitType.COMMUNICATION,
-            TraitType.SCAVENGER, TraitType.LARGE, TraitType.TRAMPLING,
-            TraitType.TAIL_LOSS, TraitType.HIBERNATION, TraitType.MIMICRY,
-            TraitType.PARASITE
-        )
+        val traitTypes = TraitType.values()
 
         for (type in traitTypes) {
             repeat(4) {
                 deck.add(TraitCard(currentId++, type))
             }
         }
+
         val commonTraits = listOf(TraitType.PREDATOR, TraitType.FAT, TraitType.LARGE, TraitType.COOPERATION)
         repeat(2) {
             for (type in commonTraits) {
                 deck.add(TraitCard(currentId++, type))
             }
         }
-
         return deck.shuffled()
-    }
-
-    /**
-    Главный игровой цикл. Последовательно выполняет фазы до тех пор, пока не закончатся карты в колоде и у игроков.
-    После каждого хода передаёт право первого хода следующему игроку.
-     */
-    private fun runGameLoop(game: Game) {
-        while (true) {
-            //  Берем актуальную фазу
-            val currentPhase = game.currentPhase
-            // Выполняем логику текущей фазы
-            currentPhase.execute(game)
-            if (game.deck.isEmpty() && game.players.all { it.hand.isEmpty() && it.animals.isEmpty() }) {
-                game.calculateFinalScore()
-                break
-            }
-            val wasExtinctionPhase = currentPhase is ExtinctionPhase
-            game.nextPhase()
-            if (wasExtinctionPhase) {
-                game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.size
-                println("\nНОВЫЙ РАУНД. Первый ход: ${game.players[game.currentPlayerIndex].name} ---")
-            }
-            if (game.deck.isEmpty() && game.players.all { it.hand.isEmpty() }) {
-                break
-            }
-        }
     }
 }

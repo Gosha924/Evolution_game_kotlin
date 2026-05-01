@@ -1,5 +1,4 @@
 package org.evolution.model.game
-
 import kotlin.random.Random
 
 class ClimatePhase : Phase() {
@@ -11,6 +10,5 @@ class ClimatePhase : Phase() {
             else -> 0
         }
         game.foodPool = foodBase
-        println("Кормовая база: $foodBase единиц еды")
     }
 }

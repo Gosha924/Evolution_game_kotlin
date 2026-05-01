@@ -2,7 +2,6 @@ package org.evolution.model.game
 
 import org.evolution.model.player.Player
 import org.evolution.model.card.Card
-import org.evolution.model.card.AnimalCard
 import org.evolution.model.card.TraitCard
 import org.evolution.model.animal.Animal
 import kotlin.random.Random
@@ -19,38 +18,51 @@ class Game(val gameId: Int) {
     var currentPlayerIndex: Int = 0
     val history = History(gameId)
 
-    fun initGame() {
-        if (players.isEmpty()) return
-
+    fun initGame(playersList: List<Player>, initialDeck: List<Card>) {
+        if (playersList.isEmpty()) return
+        players.addAll(playersList)
+        deck.addAll(initialDeck)
         deck.shuffle()
-
         for (player in players) {
             repeat(6) {
-                if (deck.isNotEmpty()) {
-                    player.addCard(deck.removeFirst())
-                }
+                if (deck.isNotEmpty()) player.addCard(deck.removeFirst())
             }
         }
-
         currentPlayerIndex = Random.nextInt(players.size)
         println("Игра началась. Первый ход у игрока: ${players[currentPlayerIndex].name}")
     }
 
+    fun getPlayersInTurnOrder(): List<Player> {
+        return players.drop(currentPlayerIndex) + players.take(currentPlayerIndex)
+    }
+
+    fun start() {
+        while (!isGameOver) {
+            currentPhase.execute(this)
+
+            if (deck.isEmpty() && players.all { it.hand.isEmpty() && it.animals.isEmpty() }) {
+                endGame()
+                break
+            }
+            val wasExtinctionPhase = currentPhase is ExtinctionPhase
+            nextPhase()
+            if (wasExtinctionPhase && !isGameOver) {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.size
+                println("\nНОВЫЙ РАУНД. Первый ход: ${players[currentPlayerIndex].name}")
+            }
+        }
+    }
+
     fun nextPhase() {
         val oldPhase = currentPhase
-
         currentPhase = when (oldPhase) {
             is DevelopmentPhase -> {
+                println("Кормовая база определена.")
                 ClimatePhase()
             }
-            is ClimatePhase -> {
-                FeedingPhase()
-            }
-            is FeedingPhase -> {
-                ExtinctionPhase()
-            }
+            is ClimatePhase -> FeedingPhase()
+            is FeedingPhase -> ExtinctionPhase()
             is ExtinctionPhase -> {
-                // После Вымирания проверяем, продолжаем ли игру
                 if (deck.isNotEmpty() || players.any { it.animals.isNotEmpty() || it.hand.isNotEmpty() }) {
                     prepareNewRound()
                     DevelopmentPhase()
@@ -59,11 +71,9 @@ class Game(val gameId: Int) {
                     oldPhase
                 }
             }
-            else -> DevelopmentPhase()
         }
-
-        println("\n[Система] Смена фаз: ${oldPhase::class.simpleName} -> ${currentPhase::class.simpleName}")
     }
+
 
     private fun prepareNewRound() {
         println("\n=== ПОДГОТОВКА НОВОГО РАУНДА: Раздача карт ===")
@@ -111,7 +121,6 @@ class Game(val gameId: Int) {
         if (!player.hand.contains(card)) return false
 
         return when (card) {
-            is AnimalCard -> true
             is TraitCard -> target != null && target in player.animals
             else -> false
         }

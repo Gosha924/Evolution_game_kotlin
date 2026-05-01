@@ -1,5 +1,5 @@
 package org.evolution.model.game
 
-abstract class Phase {
+sealed class Phase {
     abstract fun execute(game: Game)
 }

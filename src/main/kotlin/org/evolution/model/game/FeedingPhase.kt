@@ -5,66 +5,37 @@ import org.evolution.model.player.Player
 import org.evolution.model.trait.FatTrait
 import org.evolution.model.trait.PredatorTrait
 import org.evolution.model.trait.ScavengerTrait
+import org.evolution.utils.loopUntilValid
+import org.evolution.utils.printPlayerStatus
 
 class FeedingPhase : Phase() {
     override fun execute(game: Game) {
         println("\n=== ФАЗА ПИТАНИЯ ===")
+        val activePlayers = game.getPlayersInTurnOrder().toMutableList()
 
-        val activePlayers = game.players.toMutableList()
-
-        // Основной цикл: пока есть активные игроки и ресурсы
         while (activePlayers.isNotEmpty() && (game.foodPool > 0 || canStillAttack(activePlayers))) {
             val iterator = activePlayers.iterator()
-
             while (iterator.hasNext()) {
                 val player = iterator.next()
 
-                // ВНУТРЕННИЙ ЦИКЛ: удерживает ход, если ввод был неверным или действие не удалось
-                var turnCompleted = false
-                while (!turnCompleted) {
-                    println("\nХод игрока: ${player.name} (Еды в банке: ${game.foodPool})")
-                    println("1 - Взять еду из кормовой базы")
-                    println("2 - Атака хищником")
-                    println("3 - Использовать жировой запас")
-                    println("4 - ПАС")
+                loopUntilValid {
+                    println("\nХод: ${player.name} (В базе: ${game.foodPool})")
+                    println("1 - Взять еду | 2 - Атака | 3 - Жир | 4 - ПАС | 5 - МОИ ЖИВОТНЫЕ (СТАТУС)")
 
-                    val input = readLine()?.toIntOrNull()
-
-                    when (input) {
-                        1 -> {
-                            if (game.foodPool > 0) {
-                                // Если кормление успешно (выбрано валидное животное), завершаем ход
-                                if (handleFeeding(player, game)) {
-                                    turnCompleted = true
-                                }
-                            } else {
-                                println("Ошибка: Кормовая база пуста! Выберите другое действие.")
-                            }
+                    when (readlnOrNull()?.trim()) {
+                        "1" -> if (game.foodPool > 0) handleFeeding(player, game) else false
+                        "2" -> handleAttack(player, game)
+                        "3" -> handleFatUsage(player)
+                        "4" -> { iterator.remove(); true }
+                        "5" -> {
+                            printPlayerStatus(player, showFood = true)
+                            false // Остаемся в цикле, ход не тратится
                         }
-                        2 -> {
-                            if (handleAttack(player, game)) {
-                                turnCompleted = true
-                            }
-                        }
-                        3 -> {
-                            if (handleFatUsage(player)) {
-                                turnCompleted = true
-                            }
-                        }
-                        4 -> {
-                            println("Игрок ${player.name} пасовал до конца фазы.")
-                            iterator.remove() // Убираем из списка активных
-                            turnCompleted = true // Передаем ход
-                        }
-                        else -> {
-                            println("Неверный ввод. Введите число от 1 до 4.")
-                        }
+                        else -> false
                     }
                 }
             }
         }
-
-        println("\n--- Фаза питания завершена ---")
     }
 
     private fun handleFeeding(player: Player, game: Game): Boolean {

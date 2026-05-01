@@ -1,34 +1,27 @@
 package org.evolution.repository
-
 import org.evolution.model.game.Game
 import org.evolution.model.game.Move
 
 class InMemoryGameRepository : GameRepository {
-    private val games = mutableListOf<Game>()
-    private val moves = mutableListOf<Move>()
+    private val games = mutableMapOf<Int, Game>()
+    private val moves = mutableMapOf<Int, MutableList<Move>>()
+    private var nextGameId = 1
+
+    override fun getNextGameId(): Int = nextGameId++
 
     override fun saveGame(game: Game) {
-        val index = games.indexOfFirst { it.gameId == game.gameId }
-        if (index != -1) games[index] = game
-        else games.add(game)
+        games[game.gameId] = game
     }
 
-    override fun loadGame(gameId: Int): Game {
-        return games.find { it.gameId == gameId }
-            ?: throw NoSuchElementException("Game with id $gameId not found")
-    }
+    override fun loadGame(gameId: Int): Game? = games[gameId]
 
     override fun saveMove(move: Move) {
-        val index = moves.indexOfFirst { it.moveId == move.moveId }
-        if (index != -1) moves[index] = move
-        else moves.add(move)
+        moves.getOrPut(move.gameId) { mutableListOf() }.add(move)
     }
 
     override fun getAllMovesForGame(gameId: Int): List<Move> {
-        return moves.filter { it.gameId == gameId }
+        return moves[gameId] ?: emptyList()
     }
 
-    override fun getAllGames(): List<Game> {
-        return games.toList()
-    }
+    override fun getAllGames(): List<Game> = games.values.toList()
 }

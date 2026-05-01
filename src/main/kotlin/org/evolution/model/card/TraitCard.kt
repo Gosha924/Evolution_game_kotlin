@@ -7,10 +7,6 @@ class TraitCard(
     val traitType: TraitType
 ) : Card(id) {
 
-    override fun play() {
-        // Логика розыгрыша карты реализована в Game.playCard()
-    }
-
     fun createNewTrait(): Trait {
         return when (traitType) {
             TraitType.PREDATOR -> PredatorTrait(id)

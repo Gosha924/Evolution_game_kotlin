@@ -10,16 +10,25 @@ fun main() {
     val statistics = Statistics(repository)
     val console = Console(statistics, repository)
     while (true) {
-        println("1. Начать новую партию")
-        println("2. Посмотреть статистику")
-        println("3. Выход")
+        println("1. Новая игра")
+        println("2. Показать статистику")
+        println("0. Выход")
         print("Выберите действие: ")
-        when (readlnOrNull()) {
-            "1" -> console.startNewGame()
+        when (readlnOrNull()?.trim()) {
+            "1" -> {
+                try {
+                    console.startNewGame()
+                } catch (e: Exception) {
+                    println("Произошла ошибка во время игры: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
             "2" -> console.showStatistics()
-            "3" -> console.exit()
-            else -> println("Некорректный ввод")
+            "0" -> {
+                console.exit()
+                break
+            }
+            else -> println("Некорректный ввод, попробуйте снова.")
         }
     }
-
 }
