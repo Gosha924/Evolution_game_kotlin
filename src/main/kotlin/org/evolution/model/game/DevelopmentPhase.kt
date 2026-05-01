@@ -23,7 +23,7 @@ class DevelopmentPhase : Phase() {
 
                 loopUntilValid {
                     println("\nХод игрока ${player.name}. Карт: ${player.hand.size}")
-                    println("1 - Создать животное | 2 - Сыграть свойство | 5 - МОИ ЖИВОТНЫЕ | 0 - ПАС")
+                    println("1 - Создать животное | 2 - Сыграть свойство | 3 - МОИ ЖИВОТНЫЕ | 0 - ПАС")
 
                     when (readlnOrNull()?.trim()) {
                         "1" -> {
@@ -45,9 +45,9 @@ class DevelopmentPhase : Phase() {
                                 true
                             } else false
                         }
-                        "5" -> {
+                        "3" -> {
                             printPlayerStatus(player, showFood = false)
-                            false // Возвращаем false, чтобы цикл повторился и игрок выбрал действие
+                            false
                         }
                         "0" -> { passed.add(player); true }
                         else -> false
