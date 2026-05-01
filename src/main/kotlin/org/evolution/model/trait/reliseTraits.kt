@@ -30,7 +30,7 @@ class PredatorTrait(id: Int) : Trait(id, TraitType.PREDATOR) {
     override fun extraFoodRequired(): Int = 1
 
     override fun canAttack(predator: Animal, victim: Animal): Boolean {
-        return predator.getSize() > victim.getSize()
+        return predator.getSize() >= victim.getSize()
     }
 }
 

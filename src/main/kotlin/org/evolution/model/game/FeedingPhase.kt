@@ -29,7 +29,7 @@ class FeedingPhase : Phase() {
                         "4" -> { iterator.remove(); true }
                         "5" -> {
                             printPlayerStatus(player, showFood = true)
-                            false // Остаемся в цикле, ход не тратится
+                            false
                         }
                         else -> false
                     }
@@ -38,26 +38,27 @@ class FeedingPhase : Phase() {
         }
     }
 
-    private fun handleFeeding(player: Player, game: Game): Boolean {
+    internal fun handleFeeding(player: Player, game: Game, forcedAnimal: Animal? = null): Boolean {
         val hungryAnimals = player.animals.filter { !it.isFull() || hasEmptyFatTissue(it) }
-        if (hungryAnimals.isEmpty()) {
+        if (hungryAnimals.isEmpty() && forcedAnimal == null) {
             println("У вас нет голодных животных или пустого жирового запаса.")
             return false
         }
 
-        println("Выберите ID животного: ${hungryAnimals.map { it.id }}")
-        val id = readLine()?.toIntOrNull()
-        val animal = hungryAnimals.find { it.id == id }
+        // Если пришло из теста — используем его, если нет — спрашиваем консоль
+        val animal = forcedAnimal ?: run {
+            println("Выберите ID животного: ${hungryAnimals.map { it.id }}")
+            val id = readLine()?.toIntOrNull()
+            hungryAnimals.find { it.id == id }
+        }
 
         return if (animal != null) {
             if (!animal.isFull()) {
                 animal.foodEaten++
                 game.foodPool--
                 println("Животное ${animal.id} накормлено.")
-                // Вызываем триггер onFeed (для логики связей или бонусов)
                 animal.traits.forEach { it.onFeed(animal, game) }
             } else {
-                // Если сыто, но есть жировой запас
                 val fatTrait = animal.traits.filterIsInstance<FatTrait>().find { !it.filled }
                 if (fatTrait != null) {
                     fatTrait.filled = true
@@ -72,39 +73,53 @@ class FeedingPhase : Phase() {
         }
     }
 
-    private fun handleAttack(attacker: Player, game: Game): Boolean {
-        val predators = attacker.animals.filter { it.traits.any { t -> t is PredatorTrait } }
-        if (predators.isEmpty()) {
-            println("У вас нет хищников.")
-            return false
+    internal fun handleAttack(
+        attacker: Player,
+        game: Game,
+        forcedPredator: Animal? = null,
+        forcedVictim: Animal? = null
+    ): Boolean {
+        // Логика выбора хищника
+        val predator = forcedPredator ?: run {
+            val predators = attacker.animals.filter { it.traits.any { t -> t is PredatorTrait } }
+            if (predators.isEmpty()) {
+                println("У вас нет хищников.")
+                return false
+            }
+            println("Выберите вашего хищника (ID): ${predators.map { it.id }}")
+            val predId = readLine()?.toIntOrNull()
+            predators.find { it.id == predId }
+        } ?: return false
+
+        var victimPlayer: Player? = null
+        val victim = forcedVictim ?: run {
+            println("Выберите цель (ID игрока и ID животного):")
+            game.players.forEach { p -> println("Игрок ${p.playerId} (${p.name}): ${p.animals.map { it.id }}") }
+
+            val vPlayerId = readLine()?.toIntOrNull()
+            val vAnimalId = readLine()?.toIntOrNull()
+
+            victimPlayer = game.players.find { it.playerId == vPlayerId }
+            victimPlayer?.animals?.find { it.id == vAnimalId && it.isAlive }
         }
 
-        println("Выберите вашего хищника (ID): ${predators.map { it.id }}")
-        val predId = readLine()?.toIntOrNull()
-        val predator = predators.find { it.id == predId } ?: return false
+        // Если это тест, ищем владельца жертвы автоматически
+        if (victimPlayer == null && victim != null) {
+            victimPlayer = game.players.find { it.animals.contains(victim) }
+        }
 
-        println("Выберите цель (ID игрока и ID животного):")
-        game.players.forEach { p -> println("Игрок ${p.playerId} (${p.name}): ${p.animals.filter { it.isAlive }.map { it.id }}") }
-
-        val vPlayerId = readLine()?.toIntOrNull()
-        val vAnimalId = readLine()?.toIntOrNull()
-
-        val victimPlayer = game.players.find { it.playerId == vPlayerId }
-        val victim = victimPlayer?.animals?.find { it.id == vAnimalId && it.isAlive }
-
-        if (predator != null && victim != null) {
-            // Проверка правил через Traits
+        if (victim != null && victimPlayer != null) {
             val canAttack = predator.traits.all { it.canAttack(predator, victim) }
             val canBeAttacked = victim.traits.all { it.canBeAttacked(victim, predator) }
 
             if (canAttack && canBeAttacked) {
-                println("Атака успешна! Животное ${victim.id} игрока ${victimPlayer.name} съедено.")
-
-                // Триггер смерти (например, Ядовитое убивает хищника)
+                println("Атака успешна! Животное ${victim.id} игрока ${victimPlayer?.name} съедено.")
                 victim.traits.forEach { it.onDeathByPredator(victim, predator) }
+
+                // Удаляем жертву из списка игрока
+                victimPlayer?.animals?.remove(victim)
                 victim.die()
 
-                // Хищник получает 2 еды
                 val foodToReceive = 2
                 repeat(foodToReceive) {
                     if (!predator.isFull()) {
@@ -114,10 +129,7 @@ class FeedingPhase : Phase() {
                         fat?.filled = true
                     }
                 }
-
-                // Свойство Падальщик: другие животные могут получить еду при смерти этого
                 handleScavengers(game)
-
                 return true
             } else {
                 println("Атака невозможна по правилам!")
@@ -126,10 +138,13 @@ class FeedingPhase : Phase() {
         return false
     }
 
-    private fun handleFatUsage(player: Player): Boolean {
-        println("Выберите животное для перевода жира в еду: ${player.animals.filter { it.traits.any { t -> t is FatTrait && (t as FatTrait).filled } }.map { it.id }}")
+    internal fun handleFatUsage(player: Player): Boolean {
+        val selectable = player.animals.filter { it.traits.any { t -> t is FatTrait && t.filled } }
+        if (selectable.isEmpty()) return false
+
+        println("Выберите животное для перевода жира в еду: ${selectable.map { it.id }}")
         val id = readLine()?.toIntOrNull()
-        val animal = player.animals.find { it.id == id } ?: return false
+        val animal = selectable.find { it.id == id } ?: return false
         val fat = animal.traits.filterIsInstance<FatTrait>().find { it.filled }
 
         return if (fat != null && !animal.isFull()) {
@@ -140,8 +155,8 @@ class FeedingPhase : Phase() {
         } else false
     }
 
-    private fun handleScavengers(game: Game) {
-        // Логика: каждое животное со свойством Падальщик получает 1 еду из банка
+    // Вспомогательные методы тоже можно сделать internal для тестов
+    internal fun handleScavengers(game: Game) {
         game.players.forEach { p ->
             p.animals.filter { it.isAlive && it.traits.any { t -> t is ScavengerTrait } }.forEach { scav ->
                 if (!scav.isFull() && game.foodPool > 0) {
@@ -153,13 +168,9 @@ class FeedingPhase : Phase() {
         }
     }
 
+    private fun hasEmptyFatTissue(animal: Animal): Boolean =
+        animal.traits.filterIsInstance<FatTrait>().any { !it.filled }
 
-    private fun hasEmptyFatTissue(animal: Animal): Boolean {
-        return animal.traits.filterIsInstance<FatTrait>().any { !it.filled }
-    }
-
-    private fun canStillAttack(players: List<Player>): Boolean {
-        // Проверка, остались ли в игре живые хищники
-        return players.flatMap { it.animals }.any { it.traits.any { t -> t is PredatorTrait } && it.isAlive }
-    }
+    private fun canStillAttack(players: List<Player>): Boolean =
+        players.flatMap { it.animals }.any { it.traits.any { t -> t is PredatorTrait } && it.isAlive }
 }
