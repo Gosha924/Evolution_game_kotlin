@@ -152,5 +152,8 @@ class TramplingTrait(id: Int) : Trait(id, TraitType.TRAMPLING) {
 
 // Отбрасывание хвоста
 class TailLossTrait(id: Int) : Trait(id, TraitType.TAIL_LOSS) {
-    // Логика отбрасывания хвоста обрабатываться когда администратор укажет, что жертва спаслась ценой свойства.
+    fun escape(victim: Animal, traitToLose: Trait): Boolean {
+        println("Животное ${victim.id} отбрасывает хвост (теряет свойство ${traitToLose.traitType})")
+        return victim.traits.remove(traitToLose)
+    }
 }

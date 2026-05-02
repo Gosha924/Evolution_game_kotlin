@@ -2,8 +2,7 @@ package org.evolution.model.game
 
 import org.evolution.model.animal.Animal
 import org.evolution.model.player.Player
-import org.evolution.model.trait.FatTrait
-import org.evolution.model.trait.PredatorTrait
+import org.evolution.model.trait.*
 import org.evolution.model.trait.ScavengerTrait
 import org.evolution.utils.loopUntilValid
 import org.evolution.utils.printPlayerStatus
@@ -77,9 +76,10 @@ class FeedingPhase : Phase() {
         attacker: Player,
         game: Game,
         forcedPredator: Animal? = null,
-        forcedVictim: Animal? = null
+        forcedVictim: Animal? = null,
+        traitToDrop: Trait? = null
     ): Boolean {
-        // Логика выбора хищника
+        // Выбор хищника
         val predator = forcedPredator ?: run {
             val predators = attacker.animals.filter { it.traits.any { t -> t is PredatorTrait } }
             if (predators.isEmpty()) {
@@ -91,6 +91,7 @@ class FeedingPhase : Phase() {
             predators.find { it.id == predId }
         } ?: return false
 
+        // Выбор жертвы
         var victimPlayer: Player? = null
         val victim = forcedVictim ?: run {
             println("Выберите цель (ID игрока и ID животного):")
@@ -103,33 +104,67 @@ class FeedingPhase : Phase() {
             victimPlayer?.animals?.find { it.id == vAnimalId && it.isAlive }
         }
 
-        // Если это тест, ищем владельца жертвы автоматически
         if (victimPlayer == null && victim != null) {
             victimPlayer = game.players.find { it.animals.contains(victim) }
         }
 
+        // Выполнение атаки
         if (victim != null && victimPlayer != null) {
             val canAttack = predator.traits.all { it.canAttack(predator, victim) }
             val canBeAttacked = victim.traits.all { it.canBeAttacked(victim, predator) }
 
             if (canAttack && canBeAttacked) {
-                println("Атака успешна! Животное ${victim.id} игрока ${victimPlayer?.name} съедено.")
-                victim.traits.forEach { it.onDeathByPredator(victim, predator) }
 
-                // Удаляем жертву из списка игрока
-                victimPlayer?.animals?.remove(victim)
-                victim.die()
+                //  НАЧАЛО ЛОГИКИ ОТБРАСЫВАНИЯ ХВОСТА
+                var victimSurvived = false
+                var foodToReceive = 2
 
-                val foodToReceive = 2
+                val tailLoss = victim.traits.filterIsInstance<TailLossTrait>().firstOrNull()
+
+                if (tailLoss != null) {
+                    // Если нет параметра из теста, спрашиваем пользователя
+                    val droppedTrait = traitToDrop ?: run {
+                        println("Животное ${victim.id} атаковано! У него есть 'Отбрасывание хвоста'.")
+                        println("Выберите ID свойства для сброса (или введите 0, чтобы не отбрасывать хвост и умереть):")
+                        victim.traits.forEach { println("- ID: ${it.id} (${it.traitType})") }
+
+                        val dropId = readLine()?.toIntOrNull()
+                        if (dropId == 0 || dropId == null) null else victim.traits.find { it.id == dropId }
+                    }
+
+                    if (droppedTrait != null) {
+                        // Жертва использует свойство
+                        tailLoss.escape(victim, droppedTrait)
+                        victimSurvived = true
+                        foodToReceive = 1 // Хищник получает только 1 еду за хвост
+                    }
+                }
+                // КОНЕЦ ЛОГИКИ ОТБРАСЫВАНИЯ ХВОСТА
+
+                //ОБРАБОТКА ПОСЛЕДСТВИЙ АТАКИ
+                if (!victimSurvived) {
+                    // Сценарий: Жертва погибает
+                    println("Атака успешна! Животное ${victim.id} игрока ${victimPlayer?.name} съедено.")
+
+                    victim.traits.forEach { it.onDeathByPredator(victim, predator) }
+
+                    victimPlayer?.animals?.remove(victim)
+                    victim.die()
+                }
+
                 repeat(foodToReceive) {
                     if (!predator.isFull()) {
                         predator.foodEaten++
+                        predator.traits.forEach { it.onFeed(predator, game, isFromPool = false) }
                     } else {
                         val fat = predator.traits.filterIsInstance<FatTrait>().find { !it.filled }
                         fat?.filled = true
                     }
                 }
-                handleScavengers(game)
+                if (!victimSurvived) {
+                    handleScavengers(game)
+                }
+
                 return true
             } else {
                 println("Атака невозможна по правилам!")
