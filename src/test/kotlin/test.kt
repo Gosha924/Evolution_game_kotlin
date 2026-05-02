@@ -8,6 +8,7 @@ import org.evolution.model.card.TraitCard
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -161,5 +162,36 @@ class PairInteractionTest {
 
         assertEquals(1, animalD.foodEaten, "Теперь Взаимодействие должно сработать")
         assertEquals(7, game.foodPool, "В базе осталось 7 (было 9, -1 за В, -1 за D)")
+    }
+}
+
+class PoisonousTraitTest {
+
+    @Test
+    fun `test predator dies after eating poisonous animal`() {
+        val game = Game(1)
+        val feedingPhase = FeedingPhase()
+
+        val playerA = Player("Хищник", 1)
+        val playerB = Player("Жертва", 2)
+        game.players.addAll(listOf(playerA, playerB))
+
+        val predator = Animal(id = 10).apply { isAlive = true }
+        predator.traits.add(PredatorTrait(1))
+        playerA.animals.add(predator)
+
+        val victim = Animal(id = 20).apply { isAlive = true }
+        victim.traits.add(PoisonousTrait(2))
+        playerB.animals.add(victim)
+
+        feedingPhase.handleAttack(playerA, game, predator, victim)
+
+        // Жертва должна быть мертва и удалена
+        assertFalse(victim.isAlive, "Жертва должна погибнуть")
+
+        // ХИЩНИК должен погибнуть от яда
+        assertFalse(predator.isAlive, "Хищник должен погибнуть от яда после атаки")
+
+        println("Тест пройден: Хищник съел жертву, но отравился.")
     }
 }

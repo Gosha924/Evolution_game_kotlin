@@ -58,7 +58,8 @@ class CamouflageTrait(id: Int) : Trait(id, TraitType.CAMOUFLAGE) {
 
 class PoisonousTrait(id: Int) : Trait(id, TraitType.POISONOUS) {
     override fun onDeathByPredator(victim: Animal, predator: Animal) {
-        predator.die() // Хищник погибает после фазы питания
+        println("Ядовитое: Животное ${victim.id} отравило хищника ${predator.id}!")
+        predator.die()
     }
 }
 
