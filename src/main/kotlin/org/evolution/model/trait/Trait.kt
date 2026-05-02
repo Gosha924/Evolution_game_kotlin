@@ -12,7 +12,7 @@ abstract class Trait(val id: Int, val traitType: TraitType) {
     open fun calculateScore(): Int = 1
 
     // Триггер при получении животным еды (например, для Жирового запаса)
-    open fun onFeed(animal: Animal, game: Game) {}
+    open fun onFeed(animal: Animal, game: Game, isFromPool: Boolean) {}
 
     // Может ли этот хищник атаковать конкретную жертву?
     open fun canAttack(predator: Animal, victim: Animal): Boolean = true

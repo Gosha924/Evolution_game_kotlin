@@ -15,7 +15,7 @@ class ParasiteTrait(id: Int) : Trait(id, TraitType.PARASITE) {
 class FatTrait(id: Int) : Trait(id, TraitType.FAT) {
     var filled: Boolean = false
 
-    override fun onFeed(animal: Animal, game: Game) {
+    override fun onFeed(animal: Animal, game: Game, isFromPool: Boolean) {
         // Если животное уже сыто, еда может пойти в жировой запас
         if (animal.isFull() && !filled) {
             filled = true
@@ -83,6 +83,7 @@ class HibernationTrait(id: Int) : Trait(id, TraitType.HIBERNATION) {
 // Парные свойства
 abstract class PairedTrait(id: Int, type: TraitType) : Trait(id, type) {
     var partner: Animal? = null
+    protected var isProcessing = false
 }
 
 class SymbiosisTrait(id: Int) : PairedTrait(id, TraitType.SYMBIOSIS) {
@@ -92,21 +93,42 @@ class SymbiosisTrait(id: Int) : PairedTrait(id, TraitType.SYMBIOSIS) {
     }
 }
 
-class CooperationTrait(id: Int) : PairedTrait(id, TraitType.COOPERATION) {
-    override fun onFeed(animal: Animal, game: Game) {
-        // Если это животное получает еду, напарник тоже получает из синей базы
-        if (game.foodPool > 0) {
-            partner?.let { if (!it.isFull()) { it.foodEaten++; game.foodPool-- } }
+class CommunicationTrait(id: Int) : PairedTrait(id, TraitType.COMMUNICATION) {
+    override fun onFeed(animal: Animal, game: Game, isFromPool: Boolean) {
+        if (isProcessing) return
+
+        // Взаимодействие: только если еда из базы
+        if (isFromPool && game.foodPool > 0) {
+            partner?.let { target ->
+                if (target.isAlive && !target.isFull()) {
+                    isProcessing = true
+                    target.foodEaten++
+                    // Берет из базы
+                    game.foodPool--
+                    println("Взаимодействие: ${target.id} берет еду из базы вслед за ${animal.id}")
+                    target.traits.forEach { it.onFeed(target, game, isFromPool = true) }
+                    isProcessing = false
+                }
+            }
         }
     }
 }
 
-class CommunicationTrait(id: Int) : PairedTrait(id, TraitType.COMMUNICATION) {
-    override fun onFeed(animal: Animal, game: Game) {
-        // Аналогично кооперации
-        // В базе — берется из общей кормовой базы.
-        if (game.foodPool > 0) {
-            partner?.let { if (!it.isFull()) { it.foodEaten++; game.foodPool-- } }
+class CooperationTrait(id: Int) : PairedTrait(id, TraitType.COOPERATION) {
+    override fun onFeed(animal: Animal, game: Game, isFromPool: Boolean) {
+        val target = partner
+
+        if (target != null && target.isAlive && !target.isFull() && game.foodPool > 0) {
+            if (isProcessing) return // Защита от зацикливания
+
+            isProcessing = true
+            target.foodEaten++
+            game.foodPool--
+
+            // Важно: партнер тоже может иметь парные свойства
+            target.traits.forEach { it.onFeed(target, game, isFromPool = true) }
+
+            isProcessing = false
         }
     }
 }
@@ -119,7 +141,7 @@ class PiracyTrait(id: Int) : Trait(id, TraitType.PIRACY) {
 // Топотун
 // Когда животное берет 1 фишку еды, еще 1 фишка еды из кормовой базы уничтожается.
 class TramplingTrait(id: Int) : Trait(id, TraitType.TRAMPLING) {
-    override fun onFeed(animal: Animal, game: Game) {
+    override fun onFeed(animal: Animal, game: Game, isFromPool: Boolean) {
         if (game.foodPool > 0) {
             game.foodPool--
             println("Сработало свойство 'Топотун' (ID ${animal.id}): 1 еда уничтожена из базы.")

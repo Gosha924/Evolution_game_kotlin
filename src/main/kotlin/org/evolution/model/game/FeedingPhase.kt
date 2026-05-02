@@ -57,7 +57,7 @@ class FeedingPhase : Phase() {
                 animal.foodEaten++
                 game.foodPool--
                 println("Животное ${animal.id} накормлено.")
-                animal.traits.forEach { it.onFeed(animal, game) }
+                animal.traits.forEach { it.onFeed(animal, game, true) }
             } else {
                 val fatTrait = animal.traits.filterIsInstance<FatTrait>().find { !it.filled }
                 if (fatTrait != null) {
