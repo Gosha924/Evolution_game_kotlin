@@ -64,7 +64,9 @@ class PoisonousTrait(id: Int) : Trait(id, TraitType.POISONOUS) {
 }
 
 class RunningTrait(id: Int) : Trait(id, TraitType.RUNNING) {
-    // В админке при атаке на такое животное консоль должна спросить: "Удался ли бросок кубика?"
+    fun tryEscape(isSuccessManual: Boolean): Boolean {
+        return isSuccessManual
+    }
 }
 
 class MimicryTrait(id: Int) : Trait(id, TraitType.MIMICRY) {

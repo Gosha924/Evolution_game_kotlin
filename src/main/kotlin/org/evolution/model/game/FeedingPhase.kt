@@ -77,7 +77,8 @@ class FeedingPhase : Phase() {
         game: Game,
         forcedPredator: Animal? = null,
         forcedVictim: Animal? = null,
-        traitToDrop: Trait? = null
+        traitToDrop: Trait? = null,
+        runningEscapeSuccess: Boolean? = null,
     ): Boolean {
         // Выбор хищника
         val predator = forcedPredator ?: run {
@@ -114,6 +115,21 @@ class FeedingPhase : Phase() {
             val canBeAttacked = victim.traits.all { it.canBeAttacked(victim, predator) }
 
             if (canAttack && canBeAttacked) {
+                //  ЛОГИКА СВОЙСТВА БЫСТРОЕ
+                val runningTrait = victim.traits.filterIsInstance<RunningTrait>().firstOrNull()
+                if (runningTrait != null) {
+                    val escaped = runningEscapeSuccess ?: run {
+                        println("Животное ${victim.id} — Быстрое! Бросьте кубик.")
+                        println("Выпало 4, 5 или 6? (y/n)")
+                        readLine()?.lowercase() == "y"
+                    }
+                    if (escaped) {
+                        println("Животное ${victim.id} успешно убежало от хищника!")
+                        return false
+                    } else {
+                        println("Бросок неудачный. Хищник настиг жертву!")
+                    }
+                }
 
                 //  НАЧАЛО ЛОГИКИ ОТБРАСЫВАНИЯ ХВОСТА
                 var victimSurvived = false
