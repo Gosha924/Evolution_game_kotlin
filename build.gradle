@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    testImplementation 'org.junit.platform:junit-platform-suite:1.10.2'
 }
 
 test {
