@@ -30,6 +30,9 @@ class PredatorTrait(id: Int) : Trait(id, TraitType.PREDATOR) {
     override fun extraFoodRequired(): Int = 1
 
     override fun canAttack(predator: Animal, victim: Animal): Boolean {
+        if (predator == victim) {
+            return false
+        }
         return predator.getSize() >= victim.getSize()
     }
 }
@@ -137,8 +140,7 @@ class CooperationTrait(id: Int) : PairedTrait(id, TraitType.COOPERATION) {
 }
 
 class PiracyTrait(id: Int) : Trait(id, TraitType.PIRACY) {
-    // В рамках приложения-администратора сам факт применения пиратства
-    // будет вводиться вручную как отдельное действие в фазе питания.
+    var usedThisTurn: Boolean = false // Пиратство используется один раз за фазу
 }
 
 // Топотун

@@ -236,35 +236,35 @@ class TailLossTest {
 
         assertEquals(1, predator.foodEaten, "Хищник должен получить 1 еду за отброшенный хвост")
     }
+}
 
+class RunningTraitTest {
+    @Test
+    fun `test victim escapes when running dice roll is successful`() {
+        val game = Game(1)
+        val feedingPhase = FeedingPhase()
+        val playerA = Player("PredatorPlayer", 1)
+        val playerB = Player("PreyPlayer", 2)
+        game.players.addAll(listOf(playerA, playerB))
 
-    class RunningTraitTest {
-        @Test
-        fun `test victim escapes when running dice roll is successful`() {
-            val game = Game(1)
-            val feedingPhase = FeedingPhase()
-            val playerA = Player("PredatorPlayer", 1)
-            val playerB = Player("PreyPlayer", 2)
-            game.players.addAll(listOf(playerA, playerB))
+        val predator = Animal(id = 10).apply { isAlive = true }
+        predator.traits.add(PredatorTrait(1))
+        playerA.animals.add(predator)
 
-            val predator = Animal(id = 10).apply { isAlive = true }
-            predator.traits.add(PredatorTrait(1))
-            playerA.animals.add(predator)
+        val victim = Animal(id = 20).apply { isAlive = true }
+        victim.traits.add(RunningTrait(2))
+        playerB.animals.add(victim)
 
-            val victim = Animal(id = 20).apply { isAlive = true }
-            victim.traits.add(RunningTrait(2))
-            playerB.animals.add(victim)
+        // Атака с УДАЧНЫМ броском (кубик 4-6)
+        val attackResult = feedingPhase.handleAttack(
+            playerA, game, predator, victim,
+            runningEscapeSuccess = true
+        )
 
-            // Атака с УДАЧНЫМ броском (кубик 4-6)
-            val attackResult = feedingPhase.handleAttack(
-                playerA, game, predator, victim,
-                runningEscapeSuccess = true
-            )
-
-            assertFalse(attackResult, "Атака должна провалиться, так как жертва убежала")
-            assertTrue(victim.isAlive, "Жертва должна остаться живой")
-            assertEquals(0, predator.foodEaten, "Хищник не должен получить еду, если жертва убежала")
-        }
+        assertFalse(attackResult, "Атака должна провалиться, так как жертва убежала")
+        assertTrue(victim.isAlive, "Жертва должна остаться живой")
+        assertEquals(0, predator.foodEaten, "Хищник не должен получить еду, если жертва убежала")
+    }
 
         @Test
         fun `test predator catches victim when running dice roll fails`() {
@@ -291,5 +291,70 @@ class TailLossTest {
             assertFalse(victim.isAlive, "Жертва должна быть съедена")
             assertTrue(predator.foodEaten > 0, "Хищник должен получить еду")
         }
+    }
+
+
+class MimicryTest {
+    @Test
+    fun `test mimicry redirects attack to another animal`() {
+        val game = Game(1)
+        val feedingPhase = FeedingPhase()
+        val attackerPlayer = Player("PredatorPlayer", 1)
+        val victimPlayer = Player("PreyPlayer", 2)
+        game.players.addAll(listOf(attackerPlayer, victimPlayer))
+
+        val predator = Animal(id = 10).apply { isAlive = true }
+        predator.traits.add(PredatorTrait(1))
+        attackerPlayer.animals.add(predator)
+
+        val mimicVictim = Animal(id = 21).apply { isAlive = true }
+        mimicVictim.traits.add(MimicryTrait(2))
+        victimPlayer.animals.add(mimicVictim)
+        val normalVictim = Animal(id = 22).apply { isAlive = true }
+        victimPlayer.animals.add(normalVictim)
+
+        val success = feedingPhase.handleAttack(
+            attacker = attackerPlayer,
+            game = game,
+            forcedPredator = predator,
+            forcedVictim = mimicVictim,
+            forcedMimicryTarget = normalVictim
+        )
+
+        assertTrue(success, "Атака должна завершиться успешно")
+        assertTrue(mimicVictim.isAlive, "Животное с Мимикрией должно остаться живым")
+        assertFalse(normalVictim.isAlive, "Животное, на которое перевели атаку, должно погибнуть")
+        assertEquals(2, predator.foodEaten, "Хищник должен получить еду за съеденную цель")
+    }
+}
+
+class PiracyTest {
+    @Test
+    fun `test piracy steals food successfully`() {
+        val game = Game(1)
+        val feedingPhase = FeedingPhase()
+        val playerA = Player("PiratePlayer", 1)
+        val playerB = Player("TargetPlayer", 2)
+        game.players.addAll(listOf(playerA, playerB))
+
+        val pirate = Animal(id = 10).apply { isAlive = true }
+        pirate.traits.add(PiracyTrait(1))
+        playerA.animals.add(pirate)
+
+        // Жертва ограбления: Имеет 1 еду
+        val target = Animal(id = 20).apply { isAlive = true; foodEaten = 1 }
+        // Добавляем большое свойство, чтобы увеличить аппетит и не считаться "сытым", если это важно для логики игры
+        target.traits.add(LargeTrait(2))
+        playerB.animals.add(target)
+
+        // Выполняем пиратство
+        val success = feedingPhase.handlePiracy(playerA, game, forcedPirate = pirate, forcedTarget = target)
+
+        assertTrue(success, "Пиратство должно сработать")
+        assertEquals(1, pirate.foodEaten, "Пират должен получить 1 еду")
+        assertEquals(0, target.foodEaten, "У жертвы должно стать 0 еды")
+
+        val piracyTrait = pirate.traits.filterIsInstance<PiracyTrait>().first()
+        assertTrue(piracyTrait.usedThisTurn, "Свойство должно пометиться как использованное")
     }
 }
