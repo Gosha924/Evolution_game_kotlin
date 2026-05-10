@@ -1,0 +1,169 @@
+package org.evolution.model.game
+
+import org.evolution.model.player.Player
+import org.evolution.model.card.Card
+import org.evolution.model.card.TraitCard
+import org.evolution.model.animal.Animal
+import kotlin.random.Random
+
+class Game(val gameId: Int) {
+    val players = mutableListOf<Player>()
+    var foodPool: Int = 0
+    val deck = mutableListOf<Card>()
+    val discardPile = mutableListOf<Card>()
+    var isGameOver = false
+
+    // Инициализируем стартовой фазой
+    var currentPhase: Phase = DevelopmentPhase()
+    var currentPlayerIndex: Int = 0
+    val history = History(gameId)
+
+    fun initGame(playersList: List<Player>, initialDeck: List<Card>) {
+        if (playersList.isEmpty()) return
+        players.addAll(playersList)
+        deck.addAll(initialDeck)
+        deck.shuffle()
+        for (player in players) {
+            repeat(6) {
+                if (deck.isNotEmpty()) player.addCard(deck.removeFirst())
+            }
+        }
+        currentPlayerIndex = Random.nextInt(players.size)
+        println("Игра началась. Первый ход у игрока: ${players[currentPlayerIndex].name}")
+    }
+
+    fun getPlayersInTurnOrder(): List<Player> {
+        return players.drop(currentPlayerIndex) + players.take(currentPlayerIndex)
+    }
+
+    fun start() {
+        while (!isGameOver) {
+            currentPhase.execute(this)
+
+            if (deck.isEmpty() && players.all { it.hand.isEmpty() && it.animals.isEmpty() }) {
+                endGame()
+                break
+            }
+            val wasExtinctionPhase = currentPhase is ExtinctionPhase
+            nextPhase()
+            if (wasExtinctionPhase && !isGameOver) {
+                currentPlayerIndex = (currentPlayerIndex + 1) % players.size
+                println("\nНОВЫЙ РАУНД. Первый ход: ${players[currentPlayerIndex].name}")
+            }
+        }
+    }
+
+    fun nextPhase() {
+        val oldPhase = currentPhase
+        currentPhase = when (oldPhase) {
+            is DevelopmentPhase -> {
+                println("Кормовая база определена.")
+                ClimatePhase()
+            }
+            is ClimatePhase -> FeedingPhase()
+            is FeedingPhase -> ExtinctionPhase()
+            is ExtinctionPhase -> {
+                if (deck.isNotEmpty() || players.any { it.animals.isNotEmpty() || it.hand.isNotEmpty() }) {
+                    prepareNewRound()
+                    DevelopmentPhase()
+                } else {
+                    endGame()
+                    oldPhase
+                }
+            }
+        }
+    }
+
+
+    private fun prepareNewRound() {
+        println("\n=== ПОДГОТОВКА НОВОГО РАУНДА: Раздача карт ===")
+        for (player in players) {
+            val aliveCount = player.animals.size
+            val cardsToDraw = if (aliveCount == 0) 2 else aliveCount + 1
+
+            var actualDrawn = 0
+            repeat(cardsToDraw) {
+                if (deck.isNotEmpty()) {
+                    player.addCard(deck.removeFirst())
+                    actualDrawn++
+                }
+            }
+            println("${player.name} получил $actualDrawn новых карт (Живых животных: $aliveCount)")
+        }
+    }
+
+    private fun endGame() {
+        isGameOver = true
+        calculateFinalScore()
+        val winner = getWinner()
+        println("Игра окончена! Победитель: ${winner?.name ?: "Ничья"} со счетом ${winner?.score}")
+    }
+
+    fun calculateFinalScore() {
+        for (player in players) {
+            var totalScore = 0
+            for (animal in player.animals.filter { it.isAlive }) {
+                totalScore += 2 // 2 очка за выжившее животное
+                // Очки за свойства берутся из самих свойств
+                totalScore += animal.traits.sumOf { it.calculateScore() }
+            }
+            player.score = totalScore
+        }
+    }
+
+    fun getWinner(): Player? {
+        return players.maxByOrNull { it.score }
+    }
+
+    // Проверка возможности розыгрыша карты из руки
+    fun canPlayCard(player: Player, card: Card, target: Animal?): Boolean {
+        if (currentPhase !is DevelopmentPhase) return false
+        if (!player.hand.contains(card)) return false
+
+        return when (card) {
+            is TraitCard -> target != null && target in player.animals
+            else -> false
+        }
+    }
+
+    fun playCard(player: Player, card: Card, target: Animal?, actionType: ActionType) {
+        if (card !is TraitCard) return
+
+        when (actionType) {
+            ActionType.PLAY_ANIMAL_CARD -> {
+                // Любая карта свойства может стать новым животным
+                val newAnimal = Animal(id = card.id) // Используем ID карты как ID животного
+                player.addAnimal(newAnimal)
+                println("Игрок ${player.name} создал животное из карты ${card.traitType}")
+            }
+
+            ActionType.PLAY_TRAIT_CARD -> {
+                if (target != null) {
+                    val newTrait = card.createNewTrait()
+                    target.addTrait(newTrait)
+                    println("Животное ${target.id} получило свойство ${newTrait.traitType}")
+                }
+            }
+            /**
+             Тут нужно поделать проверку других ходов
+             */
+            else -> { /* обработка других действий */
+            }
+        }
+
+        player.removeCard(card)
+        discardPile.add(card)
+
+        // Запись в историю
+        history.addMove(
+            Move(
+                moveId = history.moves.size + 1,
+                gameId = gameId,
+                playerId = player.playerId,
+                actionType = actionType,
+                cardId = card.id,
+                targetAnimalId = target?.id
+            )
+        )
+    }
+}
